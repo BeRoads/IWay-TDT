@@ -26,6 +26,7 @@
  * All functionnalities about geolocation (get coordinates from API like 
  * GMap, Bing or OSM; compute distance between coordinates).
  */
+
 class Geocoder {
 
     /*  
@@ -39,15 +40,15 @@ class Geocoder {
 
     public static function distance($from, $to){
 
-	
+		
 	$earth_radius = 6371.00; // km
 
-	$delta_lat = $to["lat"]-$from["lat"];
-	$delta_lon = $to["lng"]-$from["lng"]; 
+	$delta_lat = $to["latitude"]-$from["latitude"];
+	$delta_lon = $to["longitude"]-$from["longitude"]; 
 
 	  $alpha    = $delta_lat/2;
 	  $beta     = $delta_lon/2;
-	  $a        = sin(deg2rad($alpha)) * sin(deg2rad($alpha)) + cos(deg2rad($from["lat"])) * cos(deg2rad($to["lat"])) * sin(deg2rad($beta)) * sin(deg2rad($beta)) ;
+	  $a        = sin(deg2rad($alpha)) * sin(deg2rad($alpha)) + cos(deg2rad($from["latitude"])) * cos(deg2rad($to["latitude"])) * sin(deg2rad($beta)) * sin(deg2rad($beta)) ;
 	  $c        = asin(min(1, sqrt($a)));
 	  $distance = 2*$earth_radius * $c;
 	  return round($distance);
@@ -67,7 +68,14 @@ class Geocoder {
 	usort($array, Geocoder::cmpDistances);
 
     }
-    public static function geocode($address, $tool = "gmap") {
+    public static function geocode($address, $tool = "osm") {
+
+	$c = Cache::getInstance();
+	if($c->get($tool."_requests") != null){
+		$total = $c->get($tool."_requests");
+		$total++;
+		$c->set($tool."_requests", $total, 86400); 
+	}
 
 	array_push(Geocoder::$from, $address);
         //gmap api geocoding tool
@@ -76,7 +84,7 @@ class Geocoder {
             $base_url = "http://maps.google.com/maps/geo?output=xml&key=ABQIAAAAnfs7bKE82qgb3Zc2YyS-oBT2yXp_ZAY8_ufC3CFXhHIE1NvwkxSySz_REpPq-4WZA27OwgbtyR3VcA";
             $request_url = $base_url . "&q=" . urlencode(utf8_encode($address));
             $data = TDT::HttpRequest($request_url);
-			$xml = simplexml_load_string($data->data);
+	    $xml = simplexml_load_string($data->data);
             $status = $xml->Response->Status->code;
 
             //successful geocode
@@ -85,32 +93,35 @@ class Geocoder {
                 $geocode_pending = false;
                 $coordinates = $xml->Response->Placemark[0]->Point->coordinates;
                 $coordinates = explode(",", $coordinates);
-		array_push(Geocoder::$from_coordinates, array("lng"=> $coordinates[0], "lat" => $coordinates[1]));
+		array_push(Geocoder::$from_coordinates, array("longitude"=> $coordinates[0], "latitude" => $coordinates[1]));
                 
 
             }
             //too much requests, gmap server can't handle it
             else if (strcmp($status, "620") == 0) {
-                array_push(Geocoder::$from_coordinates, array("lng" => 0,"lat" => 0));
+                array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
             }
             else {
-                array_push(Geocoder::$from_coordinates, array("lng" => 0,"lat" => 0));
+                array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
             }
 	    return Geocoder::$from_coordinates[count(Geocoder::$from_coordinates)-1];
         }
         //openstreetmap geocoding tool (Nominatim)
         else if($tool=="osm") {
 
-            $base_url = "http://nominatim.openstreetmap.org/search?q=".utf8_encode($address)."&format=xml&polygon=0&addressdetails=0";
+	    error_log("Geocoding ".$address);
+            $base_url = "http://nominatim.openstreetmap.org/search/be/".urlencode($address)."/?format=json&addressdetails=0&limit=1&countrycodes=be";
 
-            $xml = simplexml_load_file($base_url) or die("url not loading");
+            $json = TDT::HttpRequest($base_url)->data;
 
-            if(!isset($xml->place)) {
-                array_push(Geocoder::$from_coordinates, array("lng" => 0,"lat" => 0));
+	    $data = json_decode($json);
+	    
+            if(count($data)==0) {
+                array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
             }
             else {
-                $place = $xml->place[0]->attributes();
-                array_push(Geocoder::$from_coordinates, array("lng" => (string)$place['lon'], "lat" => (string)$place['lat']));
+                $place = $data[0];
+                array_push(Geocoder::$from_coordinates, array("longitude" => (string)$place->lon, "latitude" => (string)$place->lat));
             }
 	    return Geocoder::$from_coordinates[count(Geocoder::$from_coordinates)-1];
         }
@@ -134,66 +145,69 @@ class Geocoder {
 
     public static function geocodeData($data, $region, $language) {
 
-        if($region=="walloonia") {
-	     $data = explode(" ", $data);
-	     if($language == "EN" || $language == "NL" || $language == "DE"){
-		$highway = $data[4] . " " . $data[5] ." " . $data[6] ." " . (isset($data[7]) ? $data[7] : '');
-	     }
-	     else{
-	     	$highway = $data[3] . " " . $data[4] ." " . $data[5] ." " . $data[6];
-	     }
+	 $keywords = array(array("fr" => "à", "en" => "at", "nl" => "in", "de" => "der"),array("fr" => "vers", "en" => "to", "nl" => "richting", "de" => "nach"));
+        if($region=="wallonia") {
+	     
+		
+	    
+	     $data = explode($keywords[0][$language], $data);
+	     if(count($data) > 1){
+		     $data = explode($keywords[1][$language], $data[1]);
+		     $data = $data[0];     
+	     
+	             if(count(explode("-", $data)) >= 2){
+			$data = explode("-", $data);
+			$data = $data[0];
+		     }	
+	    }else{
+		$data = $data[0];	
+	    }     
+	     
 	     //check of already geocoded
-	     if($coords = Geocoder::isGeocoded($highway)){
-		return $coords;
+	     if($coords = Geocoder::isGeocoded($data)){
+		 	return $coords;
 	     }else{
-		return Geocoder::geocode("Belgium, " . $highway);
+		 	return Geocoder::geocode($data);
 	     }           
         }
-        else if($region=="flanders") {
+	else if($region=="flanders") {
 
-	    $data = str_replace(array("grens","(",")","hoflaan"), " ", $data);
-	    
-
-            $tab = explode("->", $data);
+	    $tab = explode("->", $data);
 	  
             if(count($tab) >= 2){
-		    $tab = preg_split('/(\d+)/', $tab[0], -1, PREG_SPLIT_OFFSET_CAPTURE);
-		
-		    if(isset($tab[2][0]) && $tab[2][0] != ''){		
-	               	 if($coords = Geocoder::isGeocoded($tab[2][0])){
-				return $coords;
-			 }else{
-			 	return Geocoder::geocode("Belgium, " . $tab[2][0]);
-			 }
+		$tab = preg_split('/ /', $tab[1], -1, PREG_SPLIT_OFFSET_CAPTURE);
+		if(isset($tab[1][0])){
+			$tab = $tab[1][0];
+		    if($coords = Geocoder::isGeocoded($tab)){
+			return $coords;
 		    }else{
-			if($coords = Geocoder::isGeocoded($tab[1][0])){
-				return $coords;
-			 }else{
-			 	return Geocoder::geocode("Belgium, " . $tab[1][0]);
-			 }
-	   	    }
+			return Geocoder::geocode($tab);
+		    }
+		}
+		
             }else{
 		 $tab = explode(" ", $data);
 		 if($coords = Geocoder::isGeocoded($tab[1])){
 			return $coords;
 		 }else{
-		 	return Geocoder::geocode("Belgium, " . $tab[1]);
+		 	return Geocoder::geocode($tab[1]);
 		 }
 	    }
         }
         else if($region=="federal"){
-             if(strstr($data," hauteur de") != false) {
-                $tab = explode(" hauteur de", $data);
-                $tab = explode(" ", $tab[1]);
+             
+	    if(strstr($data, $keywords[0][$language]) != false) {
+                $tab = explode($keywords[0][$language], $data);
+                
 		if($coords = Geocoder::isGeocoded($tab[1])){
 			return $coords;
 		 }else{
-		 	return Geocoder::geocode("Belgium, " . $tab[1]);
+		 	return Geocoder::geocode($tab[1]);
 		 }
                 
             }
             else {
-                return array("lng" => 0,"lat" => 0);
+                return array("longitude" => 0,"latitude" => 0);
             }
         }
         else{
