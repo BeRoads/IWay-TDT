@@ -7,12 +7,6 @@
  */
 
 class IWay{
-     public static $resources = array (
-	  "TrafficEvent",
-	  "Radar",
-	  "Camera",
-	//  "Parking"
-	  );
+     public static $resources = array ("TrafficEvent","Radar","Camera");
 }
-
 ?>
