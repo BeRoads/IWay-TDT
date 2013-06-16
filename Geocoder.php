@@ -80,28 +80,39 @@ class Geocoder {
 	array_push(Geocoder::$from, $address);
         //gmap api geocoding tool
         if($tool=="gmap") {
-
-            $base_url = "http://maps.google.com/maps/geo?output=xml&key=ABQIAAAAnfs7bKE82qgb3Zc2YyS-oBT2yXp_ZAY8_ufC3CFXhHIE1NvwkxSySz_REpPq-4WZA27OwgbtyR3VcA";
-            $request_url = $base_url . "&q=" . urlencode(utf8_encode($address));
+	    $request_url = "https://maps.googleapis.com/maps/api/geocode/xml?address=" . urlencode(utf8_encode($address)) . "&sensor=false";
             $data = TDT::HttpRequest($request_url);
 	    $xml = simplexml_load_string($data->data);
-            $status = $xml->Response->Status->code;
+            $status = $xml->GeocodeResponse->status;
 
             //successful geocode
-            if (strcmp($status, "200") == 0) {
+            if (strcmp($status, "OK") == 0) {
 
                 $geocode_pending = false;
-                $coordinates = $xml->Response->Placemark[0]->Point->coordinates;
-                $coordinates = explode(",", $coordinates);
-		array_push(Geocoder::$from_coordinates, array("longitude"=> $coordinates[0], "latitude" => $coordinates[1]));
+                $coordinates = $xml->GeocodeResponse->result->geometry->location;
+		array_push(Geocoder::$from_coordinates, array("longitude"=> $coordinates->lng, "latitude" => $coordinates->lat));
                 
-
             }
-            //too much requests, gmap server can't handle it
-            else if (strcmp($status, "620") == 0) {
+	    //nothin' !
+	    else if (strcmp($status, "ZERO_RESULTS") == 0) {
                 array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
             }
-            else {
+            //too much requests, gmap server can't handle it
+            else if (strcmp($status, "OVER_QUERY_LIMIT") == 0) {
+                array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
+            }
+	    //lack of sensor ?
+	    else if (strcmp($status, "REQUEST_DENIED") == 0) {
+                array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
+            }
+            else if (strcmp($status, "INVALID_REQUEST") == 0) {
+                array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
+            }
+	    //server side error, we can retry later
+	    else if (strcmp($status, "UNKNOWN_ERROR") == 0) {
+                array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
+            }
+	    else {
                 array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
             }
 	    return Geocoder::$from_coordinates[count(Geocoder::$from_coordinates)-1];
