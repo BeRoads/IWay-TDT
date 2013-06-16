@@ -54,7 +54,7 @@ class IWayTrafficEvent extends AResource{
     
     public function call(){
 		
-		$c = Cache::getInstance();
+    	$c = Cache::getInstance();
 		$element = new stdClass();
 		$element->item = array();	
 		if($this->region == 'all'){
@@ -93,56 +93,63 @@ class IWayTrafficEvent extends AResource{
 				}
 				$element->item = array_merge($element->item, $element_all->item);
 			}	
-	}else{
-		$element = $c->get("traffic" . $this->region . $this->lang);
-		if(is_null($element)){
-			$data = $this->getData();
-			$element = $this->parseData($data);
-			$element = $this->geocodeData($element);
-			$c->set("traffic" . $this->region . $this->lang, $element, 900);
 		}else{
-			$data = $this->getData();
-			$current_element = $c->get("traffic" . $this->region . $this->lang);
-			$new_element = $this->parseData($data);
-			$merge_element = new stdClass();
-			$merge_element->item = array();
-			
-			//we search element that needs to be merge into cache
-			foreach($new_element->item as $new_item){
-				$to_merge = true;
-				foreach($current_element->item as $current_item){
-					if($new_item->location == $current_item->location)
-	                	$to_merge = false;
-					}
-					if($to_merge)
-						array_push($merge_element, $new_item);
-					}
-					$merge_element = $this->geocodeData($merge_element);
-					$current_element->item = array_merge($current_element->item, $merge_element->item);
-					$element = $current_element;
-					$c->set("traffic" . $this->region . $this->lang, $current_element, 900);
-		}
-	}
-
-	//distance computing 
-	if($this->from != "" && $this->area > 0){
-		$distance_items = array();
-	 	foreach($element->item as $item){
-			$distance = Geocoder::distance(array("latitude"=>$this->from[0], "longitude"=>$this->from[1]),array("latitude"=>$item->lat, "longitude"=>$item->lng));				 
-			if($distance < $this->area){
-				$item->distance = $distance;
-				array_push($distance_items, $item);
+			$element = $c->get("traffic" . $this->region . $this->lang);
+			if(is_null($element)){
+				$data = $this->getData();
+				$element = $this->parseData($data);
+				$element = $this->geocodeData($element);
+				$c->set("traffic" . $this->region . $this->lang, $element, 900);
+			}else{
+				$data = $this->getData();
+				$current_element = $c->get("traffic" . $this->region . $this->lang);
+				$new_element = $this->parseData($data);
+				$merge_element = new stdClass();
+				$merge_element->item = array();
+				
+				//we search element that needs to be merge into cache
+				foreach($new_element->item as $new_item){
+					$to_merge = true;
+					foreach($current_element->item as $current_item){
+						if($new_item->location == $current_item->location)
+		                	$to_merge = false;
+						}
+						if($to_merge)
+							array_push($merge_element, $new_item);
+						}
+						$merge_element = $this->geocodeData($merge_element);
+						$current_element->item = array_merge($current_element->item, $merge_element->item);
+						$element = $current_element;
+						$c->set("traffic" . $this->region . $this->lang, $current_element, 900);
 			}
 		}
-		usort($distance_items, 'Geocoder::cmpDistances'); 
-		$element->item = $distance_items;
-	}
-	 
-	/* Max parameter */
-	//As elements are stored in cache, if a user request items with max parameter there will be missing items for next requests
-	// so I use array_slice, that's NOT lazy :)
-	if($this->max > 0 && $this->max < count($element->item))
-		$element->item = array_slice($element->item, 0, $this->max);
+
+		//distance computing 
+		if($this->from != ""){
+
+			//workaround to return distance even if there is no area
+			if(!isset($this->area)){
+				$this->area = 500;
+			}
+    		
+			$distance_items = array();
+		 	foreach($element->item as $item){
+				$distance = Geocoder::distance(array("latitude"=>$this->from[0], "longitude"=>$this->from[1]),array("latitude"=>$item->lat, "longitude"=>$item->lng));				 
+				if($distance < $this->area){
+					$item->distance = $distance;
+					array_push($distance_items, $item);
+				}
+			}
+			usort($distance_items, 'Geocoder::cmpDistances'); 
+			$element->item = $distance_items;
+		}
+		 
+		/* Max parameter */
+		//As elements are stored in cache, if a user request items with max parameter there will be missing items for next requests
+		// so I use array_slice, that's NOT lazy :)
+		if($this->max > 0 && $this->max < count($element->item))
+			$element->item = array_slice($element->item, 0, $this->max);
+		//numerotation
 		$i = 0;		
 		foreach($element->item as $item){
 			$item->id = $i++;

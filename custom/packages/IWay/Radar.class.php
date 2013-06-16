@@ -125,8 +125,13 @@ class IWayRadar extends AResource{
 		}
 	  
       	/* From, area and proximity */
-	  	if($this->from != "" && $this->area > 0){
-	    
+	  	if($this->from != ""){
+	    	
+			//workaround to return distance even if there is no area
+			if(!isset($this->area)){
+				$this->area = 500;
+			}
+
 	    	$items = array();
 	   	  	
 	   	  	for($i = 0; $i < count($element->item); $i++){
