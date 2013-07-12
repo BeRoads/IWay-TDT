@@ -6,6 +6,7 @@
  *
  * This method of IWay will get forecast about trafic jams and travel times in belgium
  */
+
 include_once 'simple_html_dom.php';
 
 class IWayForecast extends AResource{
