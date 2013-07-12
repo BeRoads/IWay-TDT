@@ -20,7 +20,8 @@ class IWayRadar extends AResource{
     public static function getParameters(){
 		return array(
 			"max" => "Maximum of radars you want to retrieve",
-		    "from" => "Geographic coordinates that you want data around (format : latitude,longitude)"
+		    "from" => "Geographic coordinates that you want data around (format : latitude,longitude)",
+		    "offset" => "Offset let you request radars with pagination"
 		);
 	}
 
@@ -40,20 +41,23 @@ class IWayRadar extends AResource{
 	  	else if($key == "area"){
 			$this->area = $val;
 	  	}
+	  	else if($key == "offset"){
+			$this->offset = $val;
+	  	}
     }
 
 	
 	private function getData(){
 		
 		R::setup(Config::$DB, Config::$DB_USER, Config::$DB_PASSWORD);
-		
-		$radars = R::find("radars", "name LIKE '%'");
+
+
+		$radars = R::find("radars", " name LIKE '%'");
 		$result = new stdClass();
 		
 		for($i=0; $i < count($radars); $i++){
 
 			$result->item[$i] = new stdClass();
-			$result->item[$i]->id = $i;
 			$result->item[$i]->name = $radars[$i]->name;
 			$result->item[$i]->lat = $radars[$i]->lat;
 			$result->item[$i]->lng = $radars[$i]->lon;
@@ -99,7 +103,6 @@ class IWayRadar extends AResource{
 					}
 					if($name != ""){
 						$result->item[++$i] = new stdClass();			
-						$result->item[$i]->id = $i;
 						$result->item[$i]->date = $date;
 						$result->item[$i]->type = "mobile";
 						$result->item[$i]->speedLimit = 0;
@@ -146,12 +149,15 @@ class IWayRadar extends AResource{
 			$element->item = $items;
 		}
 	  
+	  	//numerotation
+		$i = 0;		
+		foreach($element->item as $item){
+			$item->id = $i++;
+		}
 	  	/* Max parameter */
 	  	//As elements are stored in cache, if a user request items with max parameter there will be missing items for next requests
 	  	// so I use array_slice, that's NOT lazy :)
-	  	if($this->max > 0 && $this->max < count($element->item)){
-			$element->item = array_slice($element->item, 0, $this->max);
-		}
+	  	$element->item = array_slice($element->item, (isset($this->offset) ? $this->offset : 0), (isset($this->max) ? $this->max : count($element->item))+1);
 		return $element;
      }
 

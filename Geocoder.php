@@ -155,6 +155,7 @@ class Geocoder {
     } 
 		
 
+    //TODO : move to a more NLP way of doing it
     public static function geocodeData($data, $region, $language) {
 
 		$keywords = array(array("fr" => "à", "en" => "at", "nl" => "in", "de" => "der"),array("fr" => "vers", "en" => "to", "nl" => "richting", "de" => "nach"));

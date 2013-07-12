@@ -19,7 +19,8 @@ class IWayCamera extends AResource{
     return array(
       "max" => "Maximum of cameras you want to retrieve",
       "from" => "Geographic coordinates that you want data around (format : latitude,longitude)",
-      "area" => "Area around <from> where you want to retrieve cameras"
+      "area" => "Area around <from> where you want to retrieve cameras",
+      "offset" => "Offset let you request events with pagination"
     );
   }
 
@@ -39,6 +40,9 @@ class IWayCamera extends AResource{
     else if($key == "area"){
       $this->area = $val;
     }
+    else if($key == "offset"){
+      $this->offset = $val;
+    }
   }
 
   
@@ -48,7 +52,6 @@ class IWayCamera extends AResource{
     
     $cameras = R::find("cameras", "1");
     $result = new stdClass();
-    $j = 0; 
     for($i=0; $i < count($cameras); $i++){
       if($cameras[$i]->enabled){ 
         $result->item[$j] = new stdClass();
@@ -57,8 +60,6 @@ class IWayCamera extends AResource{
         $result->item[$j]->img = $cameras[$i]->img;
         $result->item[$j]->lat = $cameras[$i]->lat;
         $result->item[$j]->lng = $cameras[$i]->lng;
-        $result->item[$j]->id = $j;
-        $j++;
       }
     }
     return $result;
@@ -96,13 +97,17 @@ class IWayCamera extends AResource{
       $element->item = $items;
     }
 
+    //numerotation
+    $i = 0;   
+    foreach($element->item as $item){
+      $item->id = $i++;
+    }
     /* Max parameter */
     //As elements are stored in cache, if a user request items with max parameter there will be missing items for next requests
-    // so I use array_slice, that's NOT lazy :)
-    if($this->max > 0 && $this->max < count($element->item))
-      $element->item = array_slice($element->item, 0, $this->max);
-      return $element;
-    }
+    // so I use array_slice, that's NOT lazy :)    
+    $element->item = array_slice($element->item, (isset($this->offset) ? $this->offset : 0), (isset($this->max) ? $this->max : count($element->item))+1);
+    return $element;
+  }
 
     
     public static function getAllowedPrintMethods(){

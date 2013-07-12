@@ -23,7 +23,8 @@ class IWayTrafficEvent extends AResource{
 			"region" => "Region that you want data from",
 			"max" => "Maximum of events that you want to retrieve",
 			"from" => "Geographic coordinates you want data around (format : lat,lng)",
-			"area" => "Area around <from> where you want to retrieve events"
+			"area" => "Area around <from> where you want to retrieve events",
+			"offset" => "Offset let you request events with pagination"
 		);
     }
 
@@ -39,6 +40,9 @@ class IWayTrafficEvent extends AResource{
 		}
 		else if($key == "region"){
 			$this->region = $val;
+		}
+		else if($key == "offset"){
+			$this->offset = $val;
 		}
 		else if($key == "max"){
 			$this->max = $val;
@@ -143,18 +147,18 @@ class IWayTrafficEvent extends AResource{
 			usort($distance_items, 'Geocoder::cmpDistances'); 
 			$element->item = $distance_items;
 		}
-		 
-		/* Max parameter */
-		//As elements are stored in cache, if a user request items with max parameter there will be missing items for next requests
-		// so I use array_slice, that's NOT lazy :)
-		if($this->max > 0 && $this->max < count($element->item))
-			$element->item = array_slice($element->item, 0, $this->max);
+
 		//numerotation
 		$i = 0;		
 		foreach($element->item as $item){
 			$item->id = $i++;
 		}
-		return $element;
+		 
+		/* Max parameter */
+		//As elements are stored in cache, if a user request items with max parameter there will be missing items for next requests
+		// so I use array_slice, that's NOT lazy :)
+		$element->item = array_slice($element->item, (isset($this->offset) ? $this->offset : 0), (isset($this->max) ? $this->max : count($element->item)));
+ 		return $element;
 	}
     
 
