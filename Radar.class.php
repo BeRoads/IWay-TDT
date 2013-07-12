@@ -59,10 +59,7 @@ class IWayRadar extends AResource{
 
 			$result->item[$i] = new stdClass();
 			$result->item[$i]->name = $radars[$i]->name;
-<<<<<<< HEAD
 			$result->item[$i]->address = $radars[$i]->address;
-=======
->>>>>>> 2edac6e1b5e697c44c5c5df5599616cbf1a8c0bd
 			$result->item[$i]->lat = $radars[$i]->lat;
 			$result->item[$i]->lng = $radars[$i]->lon;
 			$result->item[$i]->date = date('d-m-Y');
@@ -108,10 +105,7 @@ class IWayRadar extends AResource{
 					if($name != ""){
 						$result->item[++$i] = new stdClass();			
 						$result->item[$i]->date = $date;
-<<<<<<< HEAD
 						$result->item[$i]->address = utf8_encode($name);
-=======
->>>>>>> 2edac6e1b5e697c44c5c5df5599616cbf1a8c0bd
 						$result->item[$i]->type = "mobile";
 						$result->item[$i]->speedLimit = 0;
 						$result->item[$i]->name = utf8_encode($name);
@@ -178,8 +172,4 @@ class IWayRadar extends AResource{
 		return "Radar return a list of all known radars"; 
     }
 }
-<<<<<<< HEAD
 ?>
-=======
-?>
->>>>>>> 2edac6e1b5e697c44c5c5df5599616cbf1a8c0bd
