@@ -1,5 +1,4 @@
 <?php
-
 /* Copyright (C) 2011 by iRail vzw/asbl */
 /* 
   This file is part of iWay.
@@ -68,8 +67,8 @@ class Geocoder {
 	usort($array, Geocoder::cmpDistances);
 
     }
-    public static function geocode($address, $tool = "osm") {
-
+    public static function geocode($address, $tool = "gmap") {
+	error_log("Geocoding ".$address);
 	$c = Cache::getInstance();
 	if($c->get($tool."_requests") != null){
 		$total = $c->get($tool."_requests");
@@ -80,16 +79,17 @@ class Geocoder {
 	array_push(Geocoder::$from, $address);
         //gmap api geocoding tool
         if($tool=="gmap") {
-	    $request_url = "https://maps.googleapis.com/maps/api/geocode/xml?address=" . urlencode(utf8_encode($address)) . "&sensor=false";
-            $data = TDT::HttpRequest($request_url);
-	    $xml = simplexml_load_string($data->data);
-            $status = $xml->GeocodeResponse->status;
-
+	    $request_url = "https://maps.googleapis.com/maps/api/geocode/json?address=" . urlencode($address) . "&sensor=false";
+            
+	    $response = TDT::HttpRequest($request_url);
+	    sleep(1);
+	    $json = json_decode($response->data);
+            $status = $json->status;
+	    error_log($status);
             //successful geocode
             if (strcmp($status, "OK") == 0) {
-
                 $geocode_pending = false;
-                $coordinates = $xml->GeocodeResponse->result->geometry->location;
+                $coordinates = $json->results[0]->geometry->location;
 		array_push(Geocoder::$from_coordinates, array("longitude"=> $coordinates->lng, "latitude" => $coordinates->lat));
                 
             }
@@ -99,7 +99,7 @@ class Geocoder {
             }
             //too much requests, gmap server can't handle it
             else if (strcmp($status, "OVER_QUERY_LIMIT") == 0) {
-                array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
+		array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
             }
 	    //lack of sensor ?
 	    else if (strcmp($status, "REQUEST_DENIED") == 0) {
@@ -110,7 +110,7 @@ class Geocoder {
             }
 	    //server side error, we can retry later
 	    else if (strcmp($status, "UNKNOWN_ERROR") == 0) {
-                array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
+		array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
             }
 	    else {
                 array_push(Geocoder::$from_coordinates, array("longitude" => 0,"latitude" => 0));
@@ -156,20 +156,43 @@ class Geocoder {
     public static function geocodeData($data, $region, $language) {
 
 	$keywords = array(
-                        array("fr" => "à", "en" => "at", "nl" => "in", "de" => "der"),
+                        array("fr" => "à", "en" => "in", "nl" => "in", "de" => "der"),
                         array("fr" => "vers", "en" => "to", "nl" => "naar", "de" => "nach"),
-                        array("fr" => "la", "en" => "the", "nl" => "de", "de" => "der")
+                        array("fr" => "la", "en" => "the", "nl" => "de", "de" => "der"),
+			array("fr" => "à hauteur de", "en" => "ter hoogte van", "nl" => "ter hoogte van", "de" => "ter hoogte van"),
+			array("fr"=>"en direction de", "en" => "richting", "nl" => "richting", "de" => "richting")
         );
 
 	if($region=="wallonia") {
                 $pattern = "/([\s\S]*) " . $keywords[2][$language] . " ([\s\S]*) " . $keywords[1][$language] . " ([\s\S]*)/";
                 preg_match($pattern, $data, $match);
-                $data =  (count($match)==3 ? $match[2] : null);
-        }
+                if(count($match)==3){
+			$data = $match[2];
+		}else{
+			preg_match("/[\s\S]* " . $keywords[0][$language] . " ([\s\S]*) " . $keywords[1][$language] . " [\s\S]*/", $data, $match);
+			if(count($match)==2){
+				$data = $match[1];
+			}else{
+				preg_match("/[\s\S]* " . $keywords[0][$language] . " ([\s\S]*)/", $data, $match);
+				$data = (count($match)==2?$match[1] : null);
+			}
+        	}
+	}
 	else if($region=="federal" || $region == "flanders"){
                 preg_match("/[\s\S]* " . $keywords[0][$language] . " ([\s\S]*)/", $data, $match);
-                $data = (count($match)==2 ? $match[1] : null);
-        }
+                if(count($match)==2){
+			$data = $match[1];
+		}else{
+			preg_match("/[\s\S]* ([\s\S]*) -> [\s\S]*/", $data, $match);
+        		if(count($match)==2){
+				$data = $match[1];
+			}else{
+				preg_match("/[\s\S]* ".$keywords[1][$language] . " ([\s\S]*)/", $data, $match); 
+				//preg_match("/[\s\S]* ".$keywords[3][$language] . " ([\s\S]*) " . $keywords[4][$language] . " [\s\S]*/", $data, $match);
+				$data = (count($match)==2?$match[1]:null);
+			}
+		}
+	}
     	else{
 		throw new Exception("Wrong region parameter, please retry.");
     	}
@@ -177,7 +200,7 @@ class Geocoder {
 	if($data==null){
 		return array("longitude" => 0, "latitude" =>0);
 	}
-
+	$data = utf8_encode($data) . ", Belgium";
 	if($coords = Geocoder::isGeocoded($data)){
 	 	return $coords;
 	}else{

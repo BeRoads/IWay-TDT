@@ -139,7 +139,7 @@ class IWayTrafficEvent extends AResource{
 				$data = $this->getData();
 				$element = $this->parseData($data);
 				$element = $this->geocodeData($element);
-				$this->storeEvents($event->item);
+				$this->storeEvents($element->item);
 				$c->set("traffic" . $this->region . $this->lang, $element, 600);
 			}else{
 				$data = $this->getData();
@@ -197,7 +197,7 @@ class IWayTrafficEvent extends AResource{
 		if($this->region != "brussels"){
 			foreach($element->item as $item){
 				if($this->region == "wallonia")
-					$coordinates = Geocoder::geocodeData($item->message,$this->region, $this->lang);
+					$coordinates = Geocoder::geocodeData($item->location,$this->region, $this->lang);
 				else if($this->region == "flanders")
 					$coordinates = Geocoder::geocodeData($item->location, $this->region, $this->lang);
 				else if($this->region == "federal")
@@ -340,7 +340,7 @@ class IWayTrafficEvent extends AResource{
 						$location = trim(utf8_encode(html_entity_decode(utf8_decode(strip_tags($tab[$location_counter]->innertext)))));
 
 						//remove stupid information posted on fedpol.be
-						if(!strstr($location, 'FILES - TRAVAUX')){
+						if(!strstr($location, 'FILES - TRAVAUX') && !strstr($location,'FILES - WERKEN')){
 							$result->item[$i] = new stdClass();
 							$result->item[$i]->message = $message;
 							$result->item[$i]->location = $location;
