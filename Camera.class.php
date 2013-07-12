@@ -52,7 +52,10 @@ class IWayCamera extends AResource{
     
     $cameras = R::find("cameras", "1");
     $result = new stdClass();
+<<<<<<< HEAD
     $j = 0;
+=======
+>>>>>>> 2edac6e1b5e697c44c5c5df5599616cbf1a8c0bd
     for($i=0; $i < count($cameras); $i++){
       if($cameras[$i]->enabled){ 
         $result->item[$j] = new stdClass();
@@ -61,8 +64,12 @@ class IWayCamera extends AResource{
         $result->item[$j]->img = $cameras[$i]->img;
         $result->item[$j]->lat = $cameras[$i]->lat;
         $result->item[$j]->lng = $cameras[$i]->lng;
+<<<<<<< HEAD
       	$j++;
 	}
+=======
+      }
+>>>>>>> 2edac6e1b5e697c44c5c5df5599616cbf1a8c0bd
     }
     return $result;
   }
@@ -107,7 +114,11 @@ class IWayCamera extends AResource{
     /* Max parameter */
     //As elements are stored in cache, if a user request items with max parameter there will be missing items for next requests
     // so I use array_slice, that's NOT lazy :)    
+<<<<<<< HEAD
     $element->item = array_slice($element->item, (isset($this->offset) ? $this->offset : 0), (isset($this->max) ? $this->max : count($element->item)));
+=======
+    $element->item = array_slice($element->item, (isset($this->offset) ? $this->offset : 0), (isset($this->max) ? $this->max : count($element->item))+1);
+>>>>>>> 2edac6e1b5e697c44c5c5df5599616cbf1a8c0bd
     return $element;
   }
 
@@ -120,4 +131,8 @@ class IWayCamera extends AResource{
       return "Camera return a list of all known highway webcams";
     }
 }
+<<<<<<< HEAD
 ?>
+=======
+?>
+>>>>>>> 2edac6e1b5e697c44c5c5df5599616cbf1a8c0bd
