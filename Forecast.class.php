@@ -31,8 +31,7 @@ class IWayForecast extends AResource{
 	  	}
     }
 
-	
-	private function getData($type){
+    private function getData($type){
 		
 		$result = new stdClass();
 		$result->item = array();
