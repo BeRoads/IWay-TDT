@@ -163,22 +163,7 @@ class Geocoder {
 			array("fr"=>"en direction de", "en" => "richting", "nl" => "richting", "de" => "richting")
         );
 
-	if($region=="wallonia") {
-                $pattern = "/([\s\S]*) " . $keywords[2][$language] . " ([\s\S]*) " . $keywords[1][$language] . " ([\s\S]*)/";
-                preg_match($pattern, $data, $match);
-                if(count($match)==3){
-			$data = $match[2];
-		}else{
-			preg_match("/[\s\S]* " . $keywords[0][$language] . " ([\s\S]*) " . $keywords[1][$language] . " [\s\S]*/", $data, $match);
-			if(count($match)==2){
-				$data = $match[1];
-			}else{
-				preg_match("/[\s\S]* " . $keywords[0][$language] . " ([\s\S]*)/", $data, $match);
-				$data = (count($match)==2?$match[1] : null);
-			}
-        	}
-	}
-	else if($region=="federal" || $region == "flanders"){
+	if($region=="federal" || $region == "flanders"){
                 preg_match("/[\s\S]* " . $keywords[0][$language] . " ([\s\S]*)/", $data, $match);
                 if(count($match)==2){
 			$data = $match[1];
@@ -193,9 +178,9 @@ class Geocoder {
 			}
 		}
 	}
-    	else{
+    else{
 		throw new Exception("Wrong region parameter, please retry.");
-    	}
+    }
 	
 	if($data==null){
 		return array("longitude" => 0, "latitude" =>0);

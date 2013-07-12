@@ -194,11 +194,9 @@ class IWayTrafficEvent extends AResource{
 
 
 	private function geocodeData($element){
-		if($this->region != "brussels"){
+		if($this->region != "brussels" && $this->region != "wallonia"){
 			foreach($element->item as $item){
-				if($this->region == "wallonia")
-					$coordinates = Geocoder::geocodeData($item->location,$this->region, $this->lang);
-				else if($this->region == "flanders")
+				if($this->region == "flanders")
 					$coordinates = Geocoder::geocodeData($item->location, $this->region, $this->lang);
 				else if($this->region == "federal")
 					$coordinates = Geocoder::geocodeData($item->location, $this->region, $this->lang);
@@ -247,6 +245,8 @@ class IWayTrafficEvent extends AResource{
 		switch($this->region){
 			case "wallonia" : 
 				try{			
+					$json = json_decode(utf8_encode(TDT::HttpRequest('http://trafiroutes.wallonie.be/trafiroutes/Rest/Resources/Evenements/All/'.strtoupper($this->lang))->data));
+
 					$xml = new SimpleXMLElement($data);
 					foreach($xml->channel->item as $event){
 						$result->item[$i] = new StdClass();					
@@ -255,6 +255,15 @@ class IWayTrafficEvent extends AResource{
 						$result->item[$i]->time = $this->parseTime(utf8_decode($event->pubDate));
 						$result->item[$i]->message = utf8_decode($event->description);
 						$result->item[$i]->location = utf8_decode($event->title);
+						
+						//basically, I could index $json with the current $i but we never know with their crappy backend...
+						$evt = str_replace('http://trafiroutes.wallonie.be/trafiroutes/maptempsreel/?v=EVT', '', $event->link);
+						for($json as $item){
+							if(!strcmp($item->idEvenement, $evt)){
+								$result->item[$i]->lat = $item->lat;
+								$result->item[$i]->lng = $item->lon;
+							}
+						}
 						$i++;
 					}
 					return $result;
